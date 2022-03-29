@@ -27,9 +27,9 @@ func SignIn() gin.HandlerFunc {
 }
 
 func HashPassword(password string) string {
-
+	return ""
 }
 
 func VerifyPassword(userPassword string, providedPassword string) (bool, string) {
-
+	return false, ""
 }

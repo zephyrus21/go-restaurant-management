@@ -3,8 +3,10 @@ package controller
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"restaurant-management/database"
@@ -23,7 +25,42 @@ var validate = validator.New()
 
 func GetFoods() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
+		recordPerPage, err := strconv.Atoi(c.Query("record_per_page"))
+		if err != nil || recordPerPage < 1 {
+			recordPerPage = 10
+		}
+
+		page, err := strconv.Atoi(c.Query("page"))
+		if err != nil || page < 1 {
+			page = 1
+		}
+
+		startIndex := (page - 1) * recordPerPage
+		startIndex, err = strconv.Atoi(c.Query("startIndex"))
+
+		matchStage := primitive.D{{"$match", primitive.D{{}}}}
+		groupStage := primitive.D{{"$group", primitive.D{{"_id", primitive.D{{"_id", "null"}}}, {"total_count", primitive.D{{"$sum", 1}}}, {"data", primitive.D{{"$push", "$$ROOT"}}}}}}
+		projectStage := primitive.D{
+			{
+				"$project", primitive.D{
+					{"_id", 0},
+					{"total_count", 1},
+					{"food_items", bson.D{{"$slice", []interface{}{"$data", startIndex, recordPerPage}}}},
+				}}}
+
+		result, err := foodCollection.Aggregate(ctx, mongo.Pipeline{
+			matchStage, groupStage, projectStage})
+		defer cancel()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error occured while listing food items"})
+		}
+		var allFoods []bson.M
+		if err = result.All(ctx, &allFoods); err != nil {
+			log.Fatal(err)
+		}
+		c.JSON(http.StatusOK, allFoods[0])
 	}
 }
 

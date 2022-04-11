@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	middleware "restaurant-management/middlewares"
 	"restaurant-management/routes"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	routes.UserRoutes(router)
-	// router.Use(middleware.Authentication())
+	router.Use(middleware.Authentication())
 
 	routes.FoodRoutes(router)
 	routes.MenuRoutes(router)
